@@ -3,9 +3,9 @@ from rest_framework import serializers
 import phonenumbers
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from .models import UserProfileSettings
 
 User = get_user_model()
-
 
 # Helper function for file size validation
 def validate_file_size(value, max_size_mb=5):
@@ -22,19 +22,19 @@ def validate_file_extension(value, allowed_extensions):
         raise serializers.ValidationError(f"Unsupported file extension. Allowed are: {', '.join(allowed_extensions)}")
     return value
 
+
 class UserSerializer(serializers.ModelSerializer):
     """
-    Basic serializer for User model. 'name' is the unique identifier.
+    Basic serializer for User model. 'mobile_number' is the unique identifier.
     """
     class Meta:
         model = User
         fields = ['id', 'name', 'mobile_number', 'email', 'is_active', 'is_staff']
-        read_only_fields = ['id', 'is_active', 'is_staff']
-
+        read_only_fields = ['id', 'is_active', 'is_staff', 'mobile_number'] # mobile_number is read-only here for basic display/return
 
 class SendOTPRequestSerializer(serializers.Serializer):
     """
-    Serializer for the 'send OTP' request.
+    Serializerr for the 'send OTP' request.
     Validates the mobile number format.
     """
     mobile_number = serializers.CharField(max_length=20)
@@ -49,7 +49,7 @@ class SendOTPRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError({"mobile_number": "This field is required."})
 
         # Validate and format the phone number to E.164
-        if mobile_number.startswith('+'): # Assumed E.164 format
+        if mobile_number.startswith('+'):
             try:
                 parsed = phonenumbers.parse(mobile_number, None)
                 if not phonenumbers.is_valid_number(parsed):
@@ -58,7 +58,7 @@ class SendOTPRequestSerializer(serializers.Serializer):
                 attrs['country_code'] = f"+{parsed.country_code}"
             except phonenumbers.NumberParseException as e:
                 raise serializers.ValidationError(f"Mobile number format error: {e}")
-        else: # Assumed local number, requires country_code
+        else:
             if not country_code:
                 raise serializers.ValidationError("Country code is required for non-E.164 mobile numbers.")
             full_phone = f"{country_code}{mobile_number}"
@@ -124,11 +124,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """
     Serializer for creating (via POST) and updating (via PUT/PATCH) user profiles.
     Also used for retrieving user profile data.
+    Dynamically limits editable fields for non-admin users based on UserProfileSettings.
     """
     profile_picture = serializers.ImageField(required=False, allow_null=True)
     proof_of_identity_document = serializers.FileField(required=False, allow_null=True)
     proof_of_address_document = serializers.FileField(required=False, allow_null=True)
-
 
     class Meta:
         model = User
@@ -137,11 +137,42 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'guardian_name', 'address', 'city', 'pincode', 'father_husband_name',
             'proof_of_identity_type', 'proof_of_identity_document',
             'proof_of_address_type', 'proof_of_address_document',
-            'gender', 'location', 'time_zone', 'terms_privacy_accepted',
+            'gender', 'location', 'time_zone', 'occupation', 'terms_privacy_accepted',
+            'bank_name', 'account_number', 'ifsc', 'branch',
+            'nominee_name', 'nominee_relationship', 'nominee_age', 'nominee_address',
+            'nominee_city', 'nominee_pincode', 'nominee_mobile_number', 'nominee_email',
+            'nominee_declaration_accepted',
         ]
-        # 'mobile_number' is read-only here, as it's not meant to be updated via profile endpoint directly.
-        # 'name' is the USERNAME_FIELD, must be unique. It's allowed for write as it's set on POST/PUT/PATCH.
-        read_only_fields = ['id', 'mobile_number']
+        # mobile_number is the USERNAME_FIELD, so it's controlled by the authentication flow.
+        # It's read-only in the profile update, as it's the primary key for the user.
+        read_only_fields = ['id', 'mobile_number', 'email'] # Added 'email' as it's often read-only
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        request = self.context.get('request')
+
+        # Apply dynamic field filtering ONLY for non-staff users on write operations
+        if request and not request.user.is_staff and request.method in ['POST', 'PUT', 'PATCH']:
+            try:
+                settings = UserProfileSettings.objects.first()
+                if settings:
+                    # Get editable fields from settings and combine with always read-only fields
+                    allowed_fields_for_user = set(settings.editable_fields)
+                    allowed_fields_for_user.update(self.Meta.read_only_fields)
+                else:
+                    # If no settings exist, default to only read-only fields for user updates
+                    allowed_fields_for_user = set(self.Meta.read_only_fields)
+
+            except UserProfileSettings.DoesNotExist:
+                # If UserProfileSettings model doesn't exist or no instance, assume no fields are editable by user
+                allowed_fields_for_user = set(self.Meta.read_only_fields)
+            
+            # Remove fields that are not in the allowed list for non-admin users
+            # when they are attempting to update their profile.
+            for field_name in list(self.fields.keys()):
+                if field_name not in allowed_fields_for_user:
+                    self.fields.pop(field_name)
 
     def validate_profile_picture(self, value):
         if value:
@@ -161,34 +192,129 @@ class UserProfileSerializer(serializers.ModelSerializer):
             validate_file_extension(value, ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'])
         return value
 
-    def validate_name(self, value):
-        # When creating (POST) or updating (PUT/PATCH), ensure the name is unique.
-        # For updates, allow the user to keep their current name.
-        if self.instance and self.instance.name == value:
-            return value
-        if User.objects.filter(name=value).exists():
-            raise serializers.ValidationError("This name is already taken. Please choose another.")
-        return value
-
     def validate_terms_privacy_accepted(self, value):
         if not value:
             raise serializers.ValidationError("You must accept the terms of use and privacy policy.")
         return value
 
+    def validate_nominee_declaration_accepted(self, value):
+        if not value:
+            raise serializers.ValidationError("You must accept the nominee declaration.")
+        return value
+
     def create(self, validated_data):
-        # This create method will be called by the POST request to /api/profile/
-        # The user object is already created (with a placeholder name) by RequestPhoneOTP.
-        # So, we are effectively updating an existing user's profile based on the authenticated user.
-        # We need to get the authenticated user from the context.
-        # This 'create' is specifically for when the serializer is used in a CreateAPIView.
-        # In our custom APIView, we'll manually update the user instance.
-        raise NotImplementedError("This serializer's 'create' method is not directly used for new user creation in this flow.")
-
-
-    def update(self, instance, validated_data):
-        # This update method will be called for POST (initial profile completion)
-        # and PUT/PATCH (subsequent updates).
+        # As per your comment, this serializer's 'create' is not for new user creation.
+        # This will only be called if a POST request is made to the UserProfileView
+        # and it attempts to create a new instance, which is handled by your view's post method
+        # for initial profile completion.
+        # Ensure that if 'name' is the placeholder being updated, it's included in validated_data.
+        # The instance here is expected to be request.user.
+        instance = self.instance # Get the user instance from self.instance (passed via instance=request.user)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+    def update(self, instance, validated_data):
+        # This is for PUT/PATCH operations
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+# class UserProfileSerializer(serializers.ModelSerializer):
+#     """
+#     Serializer for creating (via POST) and updating (via PUT/PATCH) user profiles.
+#     Also used for retrieving user profile data.
+#     """
+#     profile_picture = serializers.ImageField(required=False, allow_null=True)
+#     proof_of_identity_document = serializers.FileField(required=False, allow_null=True)
+#     proof_of_address_document = serializers.FileField(required=False, allow_null=True)
+
+
+#     class Meta:
+#         model = User
+#         fields = [
+#             'id', 'name', 'email', 'mobile_number', 'profile_picture', 'date_of_birth',
+#             'guardian_name', 'address', 'city', 'pincode', 'father_husband_name',
+#             'proof_of_identity_type', 'proof_of_identity_document',
+#             'proof_of_address_type', 'proof_of_address_document',
+#             'gender', 'location', 'time_zone', 'occupation', 'terms_privacy_accepted',
+#             'bank_name', 'account_number', 'ifsc', 'branch',
+#             'nominee_name', 'nominee_relationship', 'nominee_age', 'nominee_address',
+#             'nominee_city', 'nominee_pincode', 'nominee_mobile_number', 'nominee_email',
+#             'nominee_declaration_accepted',
+#         ]
+#         # mobile_number is the USERNAME_FIELD, so it's controlled by the authentication flow.
+#         # It's read-only in the profile update, as it's the primary key for the user.
+#         # 'name' is now writable in this serializer.
+#         read_only_fields = ['id', 'mobile_number']
+
+#     def validate_profile_picture(self, value):
+#         if value:
+#             validate_file_size(value, max_size_mb=2)
+#             validate_file_extension(value, ['.jpg', '.jpeg', '.png'])
+#         return value
+
+#     def validate_proof_of_identity_document(self, value):
+#         if value:
+#             validate_file_size(value, max_size_mb=5)
+#             validate_file_extension(value, ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'])
+#         return value
+
+#     def validate_proof_of_address_document(self, value):
+#         if value:
+#             validate_file_size(value, max_size_mb=5)
+#             validate_file_extension(value, ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'])
+#         return value
+
+#     # Removed validate_name method as 'name' is no longer unique at the model level
+#     # and its uniqueness is not a concern for login.
+
+#     def validate_terms_privacy_accepted(self, value):
+#         if not value:
+#             raise serializers.ValidationError("You must accept the terms of use and privacy policy.")
+#         return value
+
+#     def validate_nominee_declaration_accepted(self, value):
+#         if not value:
+#             raise serializers.ValidationError("You must accept the nominee declaration.")
+#         return value
+
+#     def create(self, validated_data):
+#         raise NotImplementedError("This serializer's 'create' method is not directly used for new user creation in this flow.")
+
+#     def update(self, instance, validated_data):
+#         for attr, value in validated_data.items():
+#             setattr(instance, attr, value)
+#         instance.save()
+#         return instance
+
+
+# class UserProfileSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'profile_picture', 'website')
+#         read_only_fields = ('username', 'email')
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+
+#         request = self.context.get('request')
+
+#         if request and not request.user.is_staff and request.method in ['PUT', 'PATCH', 'POST']:
+#             try:
+#                 settings = UserProfileSettings.objects.first()
+#                 if settings:
+#                     allowed_fields_for_user = set(settings.editable_fields) # This still works because JSONField will return a Python list
+#                     allowed_fields_for_user.update(self.Meta.read_only_fields)
+#                 else:
+#                     allowed_fields_for_user = set(self.Meta.read_only_fields)
+
+#             except UserProfileSettings.DoesNotExist:
+#                 allowed_fields_for_user = set(self.Meta.read_only_fields)
+            
+#             for field_name in list(self.fields.keys()):
+#                 if field_name not in allowed_fields_for_user:
+#                     self.fields.pop(field_name)

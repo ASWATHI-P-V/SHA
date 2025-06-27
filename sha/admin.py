@@ -3,29 +3,51 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from .models import UserProfileSettings
 
 User = get_user_model()
 
+
+
+@admin.register(UserProfileSettings)
+class UserProfileSettingsAdmin(admin.ModelAdmin):
+    list_display = ('editable_fields',)
+    def has_add_permission(self, request):
+        return not UserProfileSettings.objects.exists()
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    # Customize the add_fieldsets for creating a new user through the admin,
-    # as the default BaseUserAdmin's add_fieldsets expect a 'username' field.
-    # We are explicitly defining it based on our model's REQUIRED_FIELDS.
+    # For creating a new user through the admin interface
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('name', 'mobile_number', 'email', 'password'),
+            # Mobile number is the USERNAME_FIELD, prompted first.
+            # Name is in REQUIRED_FIELDS, so it will be prompted next.
+            'fields': ('mobile_number', 'name', 'email', 'password'),
         }),
     )
 
-    # Use fieldsets for viewing/editing existing users in the admin interface.
+    # For viewing/editing existing users in the admin interface
     fieldsets = (
-        (None, {'fields': ('name', 'mobile_number', 'email', 'password')}),
+        # Mobile number is now the primary identifier displayed first
+        (None, {'fields': ('mobile_number', 'name', 'email', 'password')}),
         ('Profile Information', {
             'fields': (
                 'profile_picture', 'date_of_birth', 'guardian_name', 'address',
                 'city', 'pincode', 'father_husband_name', 'gender', 'location',
-                'time_zone', 'terms_privacy_accepted',
+                'time_zone', 'occupation', 'terms_privacy_accepted',
+            ),
+        }),
+        ('Bank Details', {
+            'fields': (
+                'bank_name', 'account_number', 'ifsc', 'branch',
+            ),
+        }),
+        ('Nominee Details', {
+            'fields': (
+                'nominee_name', 'nominee_relationship', 'nominee_age',
+                'nominee_address', 'nominee_city', 'nominee_pincode',
+                'nominee_mobile_number', 'nominee_email', 'nominee_declaration_accepted',
             ),
         }),
         ('Proof Documents', {
@@ -41,8 +63,14 @@ class UserAdmin(BaseUserAdmin):
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
 
-    list_display = ('name', 'mobile_number', 'email', 'is_active', 'is_staff', 'date_joined')
-    list_filter = ('is_active', 'is_staff', 'is_superuser', 'gender')
-    search_fields = ('name', 'email', 'mobile_number')
+    # list_display now prioritizes mobile_number for identification
+    list_display = (
+        'mobile_number', 'name', 'email', 'occupation',
+        'nominee_name', 'nominee_relationship',
+        'is_active', 'is_staff', 'date_joined'
+    )
+    # list_filter and search_fields updated
+    list_filter = ('occupation', 'nominee_relationship', 'is_active', 'is_staff', 'is_superuser', 'gender')
+    search_fields = ('mobile_number', 'name', 'email', 'account_number', 'nominee_name', 'nominee_mobile_number')
     readonly_fields = ('last_login', 'date_joined', 'otp_created_at')
     ordering = ('-date_joined',)
