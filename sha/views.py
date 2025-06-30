@@ -174,15 +174,6 @@ class UserProfileView(APIView):
         return api_response(False, "Validation error", data=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
 
-class UserListView(generics.ListAPIView):
-    """
-    API view to list all user profiles with pagination.
-    Accessible only by authenticated staff/admin users for security.
-    """
-    queryset = User.objects.all().order_by('id')
-    serializer_class = UserProfileSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-
 
 class AdminUserProfileView(APIView):
     """
@@ -231,3 +222,5 @@ class AdminUserProfileView(APIView):
     # You might not need POST for admin updates, as profiles should already exist.
     # If an admin needs to *create* a user and their initial profile, that would typically be a separate
     # user creation endpoint.
+
+    

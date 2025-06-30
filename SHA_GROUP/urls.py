@@ -22,4 +22,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('sha.urls')),
     path('', lambda request: redirect('/admin/')),
+    path('', include('investors.urls')),
 ]
