@@ -14,10 +14,95 @@ from sha.permissions import IsAdminUser # Custom permissions
 from sha.utils import api_response # Utility for consistent API responses
 
 
+
 class InvestmentServiceGroupViewSet(viewsets.ModelViewSet):
     queryset = InvestmentServiceGroup.objects.all().order_by('name')
     serializer_class = InvestmentServiceGroupSerializer
     permission_classes = [IsAdminUser]
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset()) # Apply filtering (if any) and get the queryset
+
+        page = self.paginate_queryset(queryset) # Apply pagination (if configured)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            # When pagination is applied, you usually return the paginated response
+            # DRF's pagination renders its own structure, which includes 'results'
+            # If you want to integrate this cleanly into api_response, it needs adjustment
+            # For simplicity, here's a direct wrap.
+            return api_response(
+                True,
+                "Investment Service Groups listed successfully.",
+                data=self.get_paginated_response(serializer.data).data, # Get the paginated data structure
+                status_code=status.HTTP_200_OK
+            )
+
+        serializer = self.get_serializer(queryset, many=True) # Serialize the list of objects
+
+        return api_response(
+            True,
+            "Investment Service Groups listed successfully.",
+            data=serializer.data, # Return the full serialized list of objects
+            status_code=status.HTTP_200_OK
+        )
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object() # This will raise a 404 if not found (handled by your exception handler)
+        serializer = self.get_serializer(instance) # Serialize the single object data
+
+        return api_response(
+            True,
+            "Investment Service Group retrieved successfully.",
+            data=serializer.data, # Return the full serialized object data here
+            status_code=status.HTTP_200_OK
+        )
+
+    # Override the list method for multiple objects GET requests
+    
+
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+
+        # Customize create response
+        return api_response(
+            True,
+            "Investment Service Group created successfully.",
+            data={"id": serializer.data.get('id'), "name": serializer.data.get('name')}, # Or data=None if you prefer
+            status_code=status.HTTP_201_CREATED,
+            headers=headers
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False) # Handles both PUT (partial=False) and PATCH (partial=True)
+        instance = self.get_object() # Get the object to be updated
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True) # Validate data, raise 400 if invalid
+
+        self.perform_update(serializer) # This calls serializer.save() internally
+
+        # OPTION 1: Return a simple success message with data=null
+        return api_response(
+            True,
+            "Investment Service Group updated successfully.",
+            data={"id": serializer.data.get('id'), "name": serializer.data.get('name')},
+            status_code=status.HTTP_200_OK
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object() # Get the object to be deleted
+        self.perform_destroy(instance) # This performs the actual deletion
+
+        
+        return api_response(
+            True,
+            "Investment Service Group deleted successfully.",
+            data=None, # Data should be null for a 204 No Content response
+            status_code=status.HTTP_204_NO_CONTENT
+        )
 
 
 class InterestRateSettingViewSet(viewsets.ModelViewSet):
