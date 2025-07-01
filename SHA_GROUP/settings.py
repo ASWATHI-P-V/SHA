@@ -146,6 +146,7 @@ REST_FRAMEWORK = {
     # 'DEFAULT_PERMISSION_CLASSES': (
     #     'rest_framework.permissions.IsAuthenticated', # Default to requiring authentication
     # ),
+    'EXCEPTION_HANDLER': 'sha.utils.custom_exception_handler',
 }
 
 from datetime import timedelta
