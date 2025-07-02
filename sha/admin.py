@@ -65,12 +65,12 @@ class UserAdmin(BaseUserAdmin):
 
     # list_display now prioritizes mobile_number for identification
     list_display = (
-        'mobile_number', 'name', 'email', 'occupation',
+        'id','mobile_number', 'name', 'email', 'occupation',
         'nominee_name', 'nominee_relationship',
         'is_active', 'is_staff', 'date_joined'
     )
     # list_filter and search_fields updated
-    list_filter = ('occupation', 'nominee_relationship', 'is_active', 'is_staff', 'is_superuser', 'gender')
+    list_filter = ('occupation', 'is_active', 'is_staff', 'is_superuser')
     search_fields = ('mobile_number', 'name', 'email', 'account_number', 'nominee_name', 'nominee_mobile_number')
     readonly_fields = ('last_login', 'date_joined', 'otp_created_at')
     ordering = ('-date_joined',)

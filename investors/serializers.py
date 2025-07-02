@@ -45,17 +45,17 @@ class InvestorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Investor
         fields = [
-            'uuid', 'user', 'user_id', 'invested_amount', 'tokens_generated',
+            'id','uuid', 'user', 'user_id', 'invested_amount', 'tokens_generated',
             'investment_period', 'interest_rate_applied', 'final_return_amount',
-            'profit', 'total_portfolio_value', # Added profit and total_portfolio_value here
+            'profit', 'total_portfolio_value',
             'investment_start_date', 'investment_end_date', 'is_investment_active',
-            'selected_service_group', # Include the new field
+            'selected_service_group',
             'selected_service_group_details',  'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'uuid', 'tokens_generated', 'interest_rate_applied',
-            'final_return_amount', 'profit', 'total_portfolio_value', # Added profit and total_portfolio_value here
-            'investment_end_date', 'created_at', 'updated_at'
+            'id','uuid', 'tokens_generated', 'interest_rate_applied',
+            'final_return_amount', 'profit', 'total_portfolio_value', 
+            'investment_end_date', 'created_at', 'updated_at',
             'selected_service_group_details'
         ]
 

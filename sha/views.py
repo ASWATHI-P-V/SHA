@@ -90,7 +90,7 @@ class VerifyOTP(APIView):
             user_data = UserSerializer(user).data
             return api_response(True, "Login successful", data={
                 "access": tokens["access"],
-                "refresh": tokens["refresh"],
+                # "refresh": tokens["refresh"],
                 "user": user_data
             })
         else:
@@ -141,7 +141,7 @@ class UserProfileView(APIView):
         serializer = UserProfileSerializer(instance=user_instance, data=request.data, partial=False)
         if serializer.is_valid():
             serializer.save()
-            message = "User profile created/completed successfully." if not pk else f"User profile for {user_instance.username} created/completed by admin."
+            message = "User profile created successfully." if not pk else f"User profile for {user_instance.username} created/completed by admin."
             return api_response(True, message, data=serializer.data, status_code=status.HTTP_200_OK)
         return api_response(False, "Validation error", data=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
@@ -172,6 +172,53 @@ class UserProfileView(APIView):
             message = "User profile updated successfully." if not pk else f"User profile for {user_instance.username} partially updated by admin."
             return api_response(True, message, data=serializer.data, status_code=status.HTTP_200_OK)
         return api_response(False, "Validation error", data=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk=None, *args, **kwargs):
+        # 1. Get the target user instance.
+        #    If PK is provided, get_object attempts to fetch that user.
+        #    If no PK, get_object returns request.user.
+        user_to_delete = self.get_object(request, pk)
+
+        # 2. Handle cases where the user_to_delete was not found
+        #    (e.g., non-existent PK or get_object returned None due to some internal logic).
+        if not user_to_delete:
+            # If a PK was supplied but the user doesn't exist, it's a 404.
+            # If get_object returned None because a non-staff user tried to access another PK,
+            # this would fall into the 404/403 below.
+            if pk and not request.user.is_staff: # Explicitly deny non-admin accessing others
+                return api_response(False, "You do not have permission to delete other users' profiles.", status_code=status.HTTP_403_FORBIDDEN)
+            return api_response(False, "User not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        # 3. Permission Checks for Deletion:
+
+        # Scenario A: Admin deleting any user (including themselves if pk is explicitly provided)
+        if request.user.is_staff:
+            # Admin can delete any user if PK is provided.
+            # Admin can delete their own profile IF a PK is provided (to prevent accidental self-deletion)
+            if pk and user_to_delete.pk == request.user.pk:
+                # Admin deleting their own profile via PK
+                pass # Allow
+            elif not pk and user_to_delete.pk == request.user.pk:
+                # Admin trying to delete their own profile without a PK (e.g., /profile/DELETE)
+                return api_response(False, "Admins must specify the user ID (pk) to delete their own profile.", status_code=status.HTTP_400_BAD_REQUEST)
+            # If admin is deleting another user (pk is present and not their own pk), that's allowed by default
+            # because we're inside the request.user.is_staff block.
+        # Scenario B: Regular user deleting their own profile (no PK or PK matches their own)
+        else: # Not an admin
+            if pk and user_to_delete.pk != request.user.pk:
+                # Regular user trying to delete another user's profile via PK
+                return api_response(False, "You do not have permission to delete other users' profiles.", status_code=status.HTTP_403_FORBIDDEN)
+            elif pk is None and user_to_delete.pk != request.user.pk:
+                 # This case shouldn't happen if get_object returns request.user when pk is None
+                 # but it's a defensive check.
+                 return api_response(False, "Permission denied.", status_code=status.HTTP_403_FORBIDDEN)
+
+
+        # 4. Perform the deletion if all checks pass
+        mobile_number_deleted = user_to_delete.mobile_number # Store for response message
+        user_to_delete.delete() # Perform the deletion
+
+        return api_response(True, f"User '{mobile_number_deleted}' and associated profile deleted successfully.", status_code=status.HTTP_204_NO_CONTENT)
 
 
 

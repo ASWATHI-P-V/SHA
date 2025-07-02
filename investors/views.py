@@ -240,7 +240,7 @@ class InvestorViewSet(viewsets.ModelViewSet):
 
             # Initialize serializer with the mutable data
             serializer = self.get_serializer(data=mutable_data)
-            
+
             try:
                 # Validate data; if invalid, DRFValidationError is raised here
                 serializer.is_valid(raise_exception=True)
@@ -326,7 +326,7 @@ class InvestorViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             instance = self.get_object()
             self.perform_destroy(instance)
-            return api_response(True, "Investor profile deleted successfully.", status_code=status.HTTP_204_NO_CONTENT)
+            return api_response(True, "Investor profile deleted successfully.",data=serializer.data, status_code=status.HTTP_204_NO_CONTENT)
 
     
     @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,12 +26,13 @@ SECRET_KEY = 'django-insecure-)sxyl_nmbolesc)_9=jb9a1!cw3%49@94tb1y&%qehufro$ap=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -130,6 +132,15 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = BASE_DIR / 'media'
+
+
+
+# STATICFILES_DIRS = [BASE_DIR / "static"]
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -151,6 +162,58 @@ REST_FRAMEWORK = {
 
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=30),
     'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+
+JAZZMIN_SETTINGS = {
+    "site_title": "SHA Admin",
+    "site_header": "SHA Admin",
+    "site_brand": "SHA",
+    "site_logo": "accounts/img/logo1.jpg",
+    "site_icon": "accounts/img/admin.jpg",
+    "welcome_sign": "Welcome to SHA Admin",
+    "copyright": "SHA Inc.",
+    "search_model": ["sha.User"],
+    "theme": "darkly",
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "order_with_respect_to": ["sha","investors"],
+
+    "icons": {
+        "admin": "fas fa-shield-alt",  # Django Admin default icon
+        "auth": "fas fa-users-cog",    # Auth app general icon
+        "auth.user": "fas fa-user",    # Default user icon
+        "auth.Group": "fas fa-users",  # Default group icon
+
+        # Your 'sha' app (assuming it contains core user/profile logic)
+        "sha": "fas fa-id-badge",            # Good general icon for core identity/profile
+        "sha.User": "fas fa-user-circle",    # Specific icon for the User model
+        "sha.UserProfileSettings": "fas fa-cog", # Cog for settings, or eye for visibility/control
+        # Alternative for UserProfileSettings: "fas fa-sliders-h", "fas fa-cogs"
+
+        # 'investors' app
+        "investors": "fas fa-hand-holding-usd", # General icon for finance/investment
+        "investors.Investor": "fas fa-chart-line", # A financial chart or growing line
+        "investors.InvestmentServiceGroup": "fas fa-cubes", # Groups of services, or "fa-project-diagram"
+        "investors.InterestRateSetting": "fas fa-percent",   # Percentage for interest rates
+        # Alternative for InterestRateSetting: "fas fa-money-bill-wave", "fas fa-calculator"
+
+        # 'media_management' app
+        "media_management": "fas fa-photo-video", # General icon for media (good choice)
+        "media_management.ImageUpload": "fas fa-upload", # Good choice for uploads
+ 
+    },
+
+    "changeform_format": "horizontal_tabs",  # tabbed sections like Strapi
+    "changeform_format_overrides": {
+        "sha.User": "horizontal_tabs"
+    },
+
+    "related_modal_active": True,  # Show related (add/edit) as modals
+    # "theme": "darkly",  # Dark theme like Strapi
+    # "theme": "slate",
+    "show_ui_builder": False,  # Disable live builder in production
 }

@@ -103,7 +103,7 @@ class Investor(models.Model):
         help_text=_("Sum of invested amount and profit.")
     )
     investment_start_date = models.DateField(
-        default=timezone.now,
+        default=timezone.now().date,
         verbose_name=_("Investment Start Date")
     )
     investment_end_date = models.DateField(
@@ -129,61 +129,152 @@ class Investor(models.Model):
         verbose_name_plural = _("Investors")
         ordering = ['user__name', 'created_at']
 
+
     def save(self, *args, **kwargs):
-        # Ensure invested_amount is treated as Decimal for calculations
-        if self.invested_amount is None:
-            self.invested_amount = Decimal('0.00')
+        # ... (initial invested_amount and tokens_generated calculation) ...
 
-        # Calculate tokens_generated
-        if self.invested_amount > 0:
-            self.tokens_generated = self.invested_amount / Decimal('100.00')
-        else:
-            self.tokens_generated = Decimal('0.00')
-
-        # Calculate final_return_amount, profit, total_portfolio_value, and investment_end_date
-        # NEW LOGIC: Use selected_service_group to find the interest rate
-        if self.invested_amount > 0 and self.investment_period and self.selected_service_group:
+        # Main calculation block for interest, profit, return, and end date
+        if self.invested_amount is not None and self.invested_amount > 0 and \
+           self.investment_period is not None and \
+           self.selected_service_group is not None:
+            
+            print("--- Investor.save() Calculations Start ---")
+            print(f"Checking for InterestRateSetting with:")
+            print(f"  Service Group ID: {self.selected_service_group.id}")
+            print(f"  Period (Years): {self.investment_period}")
+            
             try:
                 # Find the interest rate specific to the selected group and period
                 interest_setting = InterestRateSetting.objects.get(
                     service_group=self.selected_service_group,
                     period_in_years=self.investment_period,
-                    is_active=True
+                    is_active=True # Crucial: This must be True in DB for calculations to apply
                 )
+                
                 self.interest_rate_applied = interest_setting.interest_percentage
+                
+                # Convert percentage to a decimal for calculation (e.g., 5.00% -> 0.05)
                 rate_decimal = self.interest_rate_applied / Decimal('100.00')
 
-                # Simple interest calculation: Principal * (1 + (Rate/100 * Time))
+                # Simple interest calculation: Principal * (1 + (Rate * Time))
+                # Formula: A = P(1 + RT) where A=final_return_amount, P=invested_amount, R=rate_decimal, T=investment_period
                 self.final_return_amount = self.invested_amount * (Decimal('1.00') + (rate_decimal * self.investment_period))
-                self.profit = self.final_return_amount - self.invested_amount
-                self.total_portfolio_value = self.invested_amount + self.profit
+                
+                # Round to 2 decimal places to prevent floating point issues and match decimal_places
+                self.final_return_amount = self.final_return_amount.quantize(Decimal('0.01'))
 
+                self.profit = self.final_return_amount - self.invested_amount
+                self.profit = self.profit.quantize(Decimal('0.01'))
+
+                self.total_portfolio_value = self.invested_amount + self.profit
+                self.total_portfolio_value = self.total_portfolio_value.quantize(Decimal('0.01'))
 
                 # Calculate end date
+                from datetime import timedelta
                 if self.investment_start_date:
-                    self.investment_end_date = self.investment_start_date + timezone.timedelta(days=self.investment_period * 365)
+                    self.investment_end_date = self.investment_start_date + timedelta(days=self.investment_period * 365)
                 else:
-                    self.investment_start_date = timezone.now().date() # Set to today if not set
-                    self.investment_end_date = self.investment_start_date + timezone.timedelta(days=self.investment_period * 365)
+                    # If start date is not set (should be default=timezone.now().date in model)
+                    self.investment_start_date = timezone.now().date()
+                    self.investment_end_date = self.investment_start_date + timedelta(days=self.investment_period * 365)
+                
+                print(f"Calculations applied:")
+                print(f"  Interest Rate Applied: {self.interest_rate_applied}%")
+                print(f"  Final Return Amount: {self.final_return_amount}")
+                print(f"  Profit: {self.profit}")
+                print(f"  Total Portfolio Value: {self.total_portfolio_value}")
+                print(f"  Investment End Date: {self.investment_end_date}")
 
             except InterestRateSetting.DoesNotExist:
-                # Fallback if no matching active interest rate setting is found for the chosen group/period
+                print("--- WARNING: No matching active InterestRateSetting found. Defaulting calculations. ---")
+                self.final_return_amount = self.invested_amount
+                self.profit = Decimal('0.00')
+                self.total_portfolio_value = self.invested_amount
+                self.interest_rate_applied = Decimal('0.00')
+                self.investment_end_date = None
+            except Exception as e:
+                print(f"--- ERROR during calculation in Investor.save(): {e} ---")
+                # Ensure fields are set to default/safe values on unexpected error
                 self.final_return_amount = self.invested_amount
                 self.profit = Decimal('0.00')
                 self.total_portfolio_value = self.invested_amount
                 self.interest_rate_applied = Decimal('0.00')
                 self.investment_end_date = None
         else:
-            # If no invested amount, period, or selected group, clear calculated fields
-            self.final_return_amount = self.invested_amount
+            print("--- Investor.save() Conditions for main calculation NOT met. Defaulting fields. ---")
+            print(f"  invested_amount: {self.invested_amount}")
+            print(f"  investment_period: {self.investment_period}")
+            print(f"  selected_service_group: {self.selected_service_group}")
+            self.final_return_amount = self.invested_amount if self.invested_amount is not None else Decimal('0.00')
             self.profit = Decimal('0.00')
-            self.total_portfolio_value = self.invested_amount
+            self.total_portfolio_value = self.invested_amount if self.invested_amount is not None else Decimal('0.00')
             self.interest_rate_applied = Decimal('0.00')
             self.investment_end_date = None
 
         super().save(*args, **kwargs)
+        print("--- Investor.save() Calculations End ---")
 
     def __str__(self):
         user_info = self.user.get_full_name() if self.user else f"User ID: {self.user_id}"
         group_info = self.selected_service_group.name if self.selected_service_group else "No Group"
         return f"Investment by {user_info} in {group_info}"
+    
+
+    # def save(self, *args, **kwargs):
+    #     # Ensure invested_amount is treated as Decimal for calculations
+    #     if self.invested_amount is None:
+    #         self.invested_amount = Decimal('0.00')
+
+    #     # Calculate tokens_generated
+    #     if self.invested_amount > 0:
+    #         self.tokens_generated = self.invested_amount / Decimal('100.00')
+    #     else:
+    #         self.tokens_generated = Decimal('0.00')
+
+    #     # Calculate final_return_amount, profit, total_portfolio_value, and investment_end_date
+    #     # NEW LOGIC: Use selected_service_group to find the interest rate
+    #     if self.invested_amount > 0 and self.investment_period and self.selected_service_group:
+    #         try:
+    #             # Find the interest rate specific to the selected group and period
+    #             interest_setting = InterestRateSetting.objects.get(
+    #                 service_group=self.selected_service_group,
+    #                 period_in_years=self.investment_period,
+    #                 is_active=True
+    #             )
+    #             self.interest_rate_applied = interest_setting.interest_percentage
+    #             rate_decimal = self.interest_rate_applied / Decimal('100.00')
+
+    #             # Simple interest calculation: Principal * (1 + (Rate/100 * Time))
+    #             self.final_return_amount = self.invested_amount * (Decimal('1.00') + (rate_decimal * self.investment_period))
+    #             self.profit = self.final_return_amount - self.invested_amount
+    #             self.total_portfolio_value = self.invested_amount + self.profit
+
+
+    #             # Calculate end date
+    #             if self.investment_start_date:
+    #                 self.investment_end_date = self.investment_start_date + timezone.timedelta(days=self.investment_period * 365)
+    #             else:
+    #                 self.investment_start_date = timezone.now().date() # Set to today if not set
+    #                 self.investment_end_date = self.investment_start_date + timezone.timedelta(days=self.investment_period * 365)
+
+    #         except InterestRateSetting.DoesNotExist:
+    #             # Fallback if no matching active interest rate setting is found for the chosen group/period
+    #             self.final_return_amount = self.invested_amount
+    #             self.profit = Decimal('0.00')
+    #             self.total_portfolio_value = self.invested_amount
+    #             self.interest_rate_applied = Decimal('0.00')
+    #             self.investment_end_date = None
+    #     else:
+    #         # If no invested amount, period, or selected group, clear calculated fields
+    #         self.final_return_amount = self.invested_amount
+    #         self.profit = Decimal('0.00')
+    #         self.total_portfolio_value = self.invested_amount
+    #         self.interest_rate_applied = Decimal('0.00')
+    #         self.investment_end_date = None
+
+    #     super().save(*args, **kwargs)
+
+    # def __str__(self):
+    #     user_info = self.user.get_full_name() if self.user else f"User ID: {self.user_id}"
+    #     group_info = self.selected_service_group.name if self.selected_service_group else "No Group"
+    #     return f"Investment by {user_info} in {group_info}"

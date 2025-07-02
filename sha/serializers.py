@@ -145,7 +145,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         # mobile_number is the USERNAME_FIELD, so it's controlled by the authentication flow.
         # It's read-only in the profile update, as it's the primary key for the user.
-        read_only_fields = ['id', 'mobile_number','name']
+        read_only_fields = ['id', 'mobile_number']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -10,7 +10,7 @@ User = get_user_model()
 # Register InvestmentServiceGroup
 @admin.register(InvestmentServiceGroup)
 class InvestmentServiceGroupAdmin(admin.ModelAdmin):
-    list_display = ('name', 'is_active', 'created_at')
+    list_display = ('id','name', 'is_active', 'created_at')
     list_filter = ('is_active',)
     search_fields = ('name',)
 
@@ -18,7 +18,7 @@ class InvestmentServiceGroupAdmin(admin.ModelAdmin):
 @admin.register(InterestRateSetting)
 class InterestRateSettingAdmin(admin.ModelAdmin):
     # NEW: Include service_group in list display and fieldsets
-    list_display = ('service_group', 'period_in_years', 'interest_percentage', 'is_active', 'created_at', 'updated_at')
+    list_display = ('id','service_group', 'period_in_years', 'interest_percentage', 'is_active', 'created_at', 'updated_at')
     list_filter = ('is_active', 'service_group',) # Filter by service group
     search_fields = ('service_group__name', 'period_in_years',) # Search by group name
     ordering = ('service_group__name', 'period_in_years',)
@@ -32,7 +32,7 @@ class InterestRateSettingAdmin(admin.ModelAdmin):
 @admin.register(Investor)
 class InvestorAdmin(admin.ModelAdmin):
     list_display = (
-        'user_display_name', 'user_mobile_number', 'selected_service_group', # NEW: Display selected group
+        'id','user_display_name', 'user_mobile_number', 'selected_service_group', # NEW: Display selected group
         'invested_amount', 'profit', 'total_portfolio_value', 'investment_period',
         'interest_rate_applied', 'final_return_amount',
         'investment_start_date', 'investment_end_date', 'is_investment_active'
