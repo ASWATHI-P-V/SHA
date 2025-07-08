@@ -174,54 +174,45 @@ class UserProfileView(APIView):
         return api_response(False, "Validation error", data=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk=None, *args, **kwargs):
-        # 1. Get the target user instance.
-        #    If PK is provided, get_object attempts to fetch that user.
-        #    If no PK, get_object returns request.user.
+        # Determine the user to be deleted based on PK or the authenticated user
         user_to_delete = self.get_object(request, pk)
 
-        # 2. Handle cases where the user_to_delete was not found
-        #    (e.g., non-existent PK or get_object returned None due to some internal logic).
         if not user_to_delete:
-            # If a PK was supplied but the user doesn't exist, it's a 404.
-            # If get_object returned None because a non-staff user tried to access another PK,
-            # this would fall into the 404/403 below.
-            if pk and not request.user.is_staff: # Explicitly deny non-admin accessing others
+            # This handles cases where the PK was invalid or a non-admin tried to access another user's PK.
+            # Your get_object already handles returning None for forbidden access.
+            if pk and not request.user.is_staff:
                 return api_response(False, "You do not have permission to delete other users' profiles.", status_code=status.HTTP_403_FORBIDDEN)
             return api_response(False, "User not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        # 3. Permission Checks for Deletion:
-
-        # Scenario A: Admin deleting any user (including themselves if pk is explicitly provided)
+        # Permission check for deletion
         if request.user.is_staff:
-            # Admin can delete any user if PK is provided.
-            # Admin can delete their own profile IF a PK is provided (to prevent accidental self-deletion)
-            if pk and user_to_delete.pk == request.user.pk:
-                # Admin deleting their own profile via PK
-                pass # Allow
-            elif not pk and user_to_delete.pk == request.user.pk:
-                # Admin trying to delete their own profile without a PK (e.g., /profile/DELETE)
-                return api_response(False, "Admins must specify the user ID (pk) to delete their own profile.", status_code=status.HTTP_400_BAD_REQUEST)
-            # If admin is deleting another user (pk is present and not their own pk), that's allowed by default
-            # because we're inside the request.user.is_staff block.
-        # Scenario B: Regular user deleting their own profile (no PK or PK matches their own)
+            # Admins can delete any user's profile, specified by PK.
+            # If an admin tries to delete their own without PK (e.g., /profile/delete),
+            # user_to_delete will be request.user. We can enforce PK for admin self-deletion
+            # to prevent accidental account deletion.
+            if not pk and user_to_delete.pk == request.user.pk:
+                return api_response(False, "Admins must specify the user ID (pk) to delete their own profile to prevent accidental full account deletion.", status_code=status.HTTP_400_BAD_REQUEST)
+            # Otherwise, admin can proceed.
+            pass
         else: # Not an admin
-            if pk and user_to_delete.pk != request.user.pk:
-                # Regular user trying to delete another user's profile via PK
+            # A non-admin can ONLY delete their OWN profile.
+            if user_to_delete.pk != request.user.pk:
                 return api_response(False, "You do not have permission to delete other users' profiles.", status_code=status.HTTP_403_FORBIDDEN)
-            elif pk is None and user_to_delete.pk != request.user.pk:
-                 # This case shouldn't happen if get_object returns request.user when pk is None
-                 # but it's a defensive check.
-                 return api_response(False, "Permission denied.", status_code=status.HTTP_403_FORBIDDEN)
+            # If user_to_delete.pk == request.user.pk, it means they are deleting their own, so pass.
 
+        # If we reach here, permission is granted.
+        try:
+            mobile_number_deleted = user_to_delete.mobile_number # Assuming 'mobile_number' exists on your User model
+            user_to_delete.delete()
+            return api_response(True, f"User '{mobile_number_deleted}' and associated profile deleted successfully.", status_code=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            # Log the exception for debugging on the server side
+            # import logging
+            # logger = logging.getLogger(__name__)
+            # logger.error(f"Error deleting user {user_to_delete.pk}: {e}", exc_info=True)
+            return api_response(False, "An error occurred during deletion.", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # 4. Perform the deletion if all checks pass
-        mobile_number_deleted = user_to_delete.mobile_number # Store for response message
-        user_to_delete.delete() # Perform the deletion
-
-        return api_response(True, f"User '{mobile_number_deleted}' and associated profile deleted successfully.", status_code=status.HTTP_204_NO_CONTENT)
-
-
-
+    
 class AdminUserProfileView(APIView):
     """
     API view for administrators to retrieve or update any user's profile.
