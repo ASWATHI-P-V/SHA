@@ -138,7 +138,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'proof_of_identity_type', 'proof_of_identity_document',
             'proof_of_address_type', 'proof_of_address_document',
             'gender', 'location', 'time_zone', 'occupation', 'terms_privacy_accepted',
-            'bank_name', 'account_number', 'ifsc', 'branch',
+            'bank_name', 'account_number', 'bank_details',
             'nominee_name', 'nominee_relationship', 'nominee_age', 'nominee_address',
             'nominee_city', 'nominee_pincode', 'nominee_mobile_number', 'nominee_email',
             'nominee_declaration_accepted',

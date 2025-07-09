@@ -13,7 +13,7 @@ from .serializers import (
 from sha.permissions import IsAdminUser # Custom permissions
 from sha.utils import api_response # Utility for consistent API responses
 from rest_framework.exceptions import ValidationError as DRFValidationError # Alias it to avoid conflict with django.core.exceptions.ValidationError
-
+from .permissions import IsAdminUser, IsOwnerOrAdmin
 
 
 class InvestmentServiceGroupViewSet(viewsets.ModelViewSet):
@@ -210,11 +210,15 @@ class InvestorViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated] # Base permission: authenticated users
 
     def get_permissions(self):
-        # Allow non-admins to only view their own profile. Admins can do anything.
-        if self.action in ['retrieve', 'list', 'full_profile', 'my_profile', 'create']: # create is allowed for authenticated users
+        # 2. Modify get_permissions to use IsOwnerOrAdmin for destroy and update
+        if self.action in ['retrieve', 'list', 'full_profile', 'my_profile', 'create']:
             return [permissions.IsAuthenticated()]
-        # All other actions (update, delete) require admin
-        return [IsAdminUser()]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            # For update and destroy, we need object-level permission
+            return [IsOwnerOrAdmin()]
+        # Fallback for any other custom actions not explicitly handled
+        return [IsAdminUser()] # Or a more restrictive default if needed
+
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -231,25 +235,53 @@ class InvestorViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             mutable_data = request.data.copy()
 
-            # For non-admins, inject the current user's ID into the mutable data.
-            # This makes the 'user_id' field valid for their own profile.
             if not self.request.user.is_staff:
-                mutable_data['user'] = self.request.user.id
-            # else: # If admin is creating, they should explicitly provide 'user'
-            #     if 'user' not in mutable_data:
-            #         raise DRFValidationError({"user": "User ID is required for admin creation."})
+                mutable_data['user_id'] = self.request.user.id
+            else:
+                # Admin creating an investor profile for another user
+                # Ensure 'user' is provided when an admin is creating
+                if 'user_id' not in mutable_data:
+                    # Specific error for admin missing user ID
+                    return api_response(
+                        False,
+                        "As an admin, you must provide the 'user' ID for whom the investor profile is being created.",
+                        data={"user_id": ["This field is required for admin creation."]},
+                        status_code=status.HTTP_400_BAD_REQUEST
+                    )
+
 
             serializer = self.get_serializer(data=mutable_data)
 
             try:
                 serializer.is_valid(raise_exception=True)
             except DRFValidationError as e:
+                # Check if the error is a non_field_error from UniqueTogetherValidator
+                if 'non_field_errors' in e.detail:
+                    # If it is, take the message directly from there
+                    error_message = e.detail['non_field_errors'][0]
+                else:
+                    # Otherwise, extract the first field-specific error as before
+                    first_error_key = next(iter(e.detail))
+                    error_message = f"{first_error_key}: {e.detail[first_error_key][0]}"
+
                 return api_response(
                     False,
-                    "Validation error.",
-                    data=e.detail,
+                    error_message, # Now directly use the extracted error_message
+                    data=None, # <--- CHANGE THIS TO None
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
+            # except DRFValidationError as e:
+            #     # Extract the first error message from the serializer errors
+            #     # This makes the 'message' field in the response more specific
+            #     first_error_key = next(iter(e.detail)) # Get the first field with an error
+            #     first_error_message = e.detail[first_error_key][0] # Get the first error message for that field
+
+            #     return api_response(
+            #         False,
+            #         f"{first_error_key}: {first_error_message}", # Specific message
+            #         data=e.detail, # Keep the full error details in 'data'
+            #         status_code=status.HTTP_400_BAD_REQUEST
+            #     )
             except Exception as e:
                 return api_response(
                     False,
@@ -268,7 +300,6 @@ class InvestorViewSet(viewsets.ModelViewSet):
                 status_code=status.HTTP_201_CREATED,
                 headers=headers
             )
-
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
@@ -281,6 +312,14 @@ class InvestorViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+
+        if not queryset.exists():
+            return api_response(
+                True, # Still success, but no data
+                "No investor profiles found for this user.", # Updated message
+                data=[], # Empty list
+                status_code=status.HTTP_200_OK # Still 200 OK as the request was valid
+            )
 
         page = self.paginate_queryset(queryset)
         if page is not None:

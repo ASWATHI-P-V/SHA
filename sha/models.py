@@ -138,8 +138,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Bank Details Fields
     bank_name = models.CharField(max_length=255, null=True, blank=True)
     account_number = models.CharField(max_length=50, unique=False, null=True, blank=True)
-    ifsc = models.CharField(max_length=20, null=True, blank=True)
-    branch = models.CharField(max_length=255, null=True, blank=True)
+    bank_details = models.TextField(max_length=255, null=True, blank=True)
 
     # Nominee Details Fields
     nominee_name = models.CharField(max_length=255, null=True, blank=True)

@@ -1,4 +1,4 @@
-# SHA_GROUP/investor_api/serializers.py
+# SHA_GROUP/investor/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Investor, InvestmentServiceGroup, InterestRateSetting
@@ -75,20 +75,35 @@ class InvestorSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Investment period must be 3, 5, or 10 years.")
         return value
 
-    def create(self, validated_data):
-        # The uniqueness check is now handled by the UniqueTogetherValidator in Meta class
-        # (or by the database's unique_together constraint if not using the validator)
+    # def create(self, validated_data):
+    #     # The uniqueness check is now handled by the UniqueTogetherValidator in Meta class
+    #     # (or by the database's unique_together constraint if not using the validator)
 
-        investor = Investor.objects.create(**validated_data)
-        return investor
+    #     investor = Investor.objects.create(**validated_data)
+    #     return investor
 
-    def update(self, instance, validated_data):
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+    # def update(self, instance, validated_data):
+    #     for attr, value in validated_data.items():
+    #         setattr(instance, attr, value)
 
-        instance.save() # Call save to trigger calculations
+    #     instance.save() # Call save to trigger calculations
 
-        return instance
+    #     return instance
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
     # def create(self, validated_data):
     #     # user will be handled by source='user' in user_id field
