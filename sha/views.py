@@ -6,7 +6,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser # 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import generics # For ListAPIView
-
 from .utils import generate_otp, get_tokens_for_user, api_response
 from .serializers import (
     SendOTPRequestSerializer, VerifyOTPRequestSerializer,
@@ -15,7 +14,7 @@ from .serializers import (
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 User = get_user_model()
-
+#MARK: Request OTP
 class RequestPhoneOTP(APIView):
     """
     Handles sending an OTP to a mobile number for login/signup.
@@ -58,7 +57,7 @@ class RequestPhoneOTP(APIView):
         message = "OTP sent successfully. Please proceed to verify OTP and complete your profile." if created else "OTP sent successfully. Please verify to login."
         return api_response(True, message, data={"otp_debug": otp})
 
-
+#MARK: Verify OTP
 class VerifyOTP(APIView):
     """
     Verifies the provided OTP for a mobile number.
@@ -96,7 +95,7 @@ class VerifyOTP(APIView):
         else:
             return api_response(False, "Invalid or expired OTP", status_code=status.HTTP_400_BAD_REQUEST)
 
-
+#MARK: User Profile 
 class UserProfileView(APIView):
     """
     API view for creating (first time POST) or retrieving/updating (GET/PUT/PATCH)
@@ -236,7 +235,7 @@ class UserProfileView(APIView):
             # It's highly recommended to log these errors for debugging.
             return api_response(False, f"An internal server error occurred while deleting the user: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    
+#MARK: Admin User Profile
 class AdminUserProfileView(APIView):
     """
     API view for administrators to retrieve or update any user's profile.

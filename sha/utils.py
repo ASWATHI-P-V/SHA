@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.views import exception_handler
 from rest_framework.exceptions import ValidationError, NotAuthenticated, PermissionDenied, NotFound
 
+#MARK: extract single error message 
 def _extract_single_error_message(errors_dict):
     """
     Extracts a single, human-readable error message from a DRF serializer errors dictionary.
@@ -29,7 +30,7 @@ def _extract_single_error_message(errors_dict):
                 return nested_error
     return "An unknown validation error occurred."
 
-
+# #MARK: API Response Function
 def api_response(success, message=None, data=None, status_code=status.HTTP_200_OK, headers=None):
     """
     Generates a consistent API response.
@@ -62,7 +63,7 @@ def api_response(success, message=None, data=None, status_code=status.HTTP_200_O
 
 # ... (generate_otp, validate_phone_number, get_tokens_for_user functions are unchanged) ...
 
-
+#MARK: Custom Exception Handler
 def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
 
@@ -105,65 +106,6 @@ def custom_exception_handler(exc, context):
 
 
 
-# # SHA_GROUP/sha/utils.py
-# import random
-# import phonenumbers
-# from rest_framework_simplejwt.tokens import RefreshToken
-# from rest_framework.response import Response
-# from rest_framework import status
-# from rest_framework.views import exception_handler
-# from rest_framework.exceptions import ValidationError, NotAuthenticated, PermissionDenied, NotFound
-
-# def _extract_single_error_message(errors_dict):
-#     """
-#     Extracts a single, human-readable error message from a DRF serializer errors dictionary.
-#     Prioritizes non_field_errors, then the first field's error.
-#     """
-#     if not isinstance(errors_dict, dict):
-#         return str(errors_dict) # In case of a simple string/list error
-
-#     # Prioritize non_field_errors if they exist
-#     if 'non_field_errors' in errors_dict and isinstance(errors_dict['non_field_errors'], list) and errors_dict['non_field_errors']:
-#         return str(errors_dict['non_field_errors'][0])
-
-#     # Iterate through fields to find the first error
-#     for field, errors in errors_dict.items():
-#         if isinstance(errors, list) and errors:
-#             # Format field name for clarity (e.g., 'mobile_number' -> 'Mobile number')
-#             # Removed the field_name_pretty prefix. Now it just returns the error message itself.
-#             return str(errors[0])
-#         elif isinstance(errors, dict):
-#             # Recursively try to find an error in nested dictionaries (though for simple cases, direct fields are often enough)
-#             nested_error = _extract_single_error_message(errors)
-#             if nested_error:
-#                 return nested_error
-#     return "An unknown validation error occurred." # Fallback
-
-
-# def api_response(success, message=None, data=None, status_code=status.HTTP_200_OK, headers=None):
-#     """
-#     Generates a consistent API response.
-#     If it's a 400 Bad Request due to validation errors, it sets the 'message'
-#     to the specific error and sets 'data' to null.
-#     The headers argument will be passed directly to rest_framework.response.Response.
-#     """
-#     response_data = {}
-#     response_data["success"] = success
-
-#     # Handle validation errors specifically for 400 status codes
-#     if not success and status_code == status.HTTP_400_BAD_REQUEST and isinstance(data, dict):
-#         response_data["message"] = _extract_single_error_message(data)
-#         response_data["data"] = None
-#     else:
-#         response_data["message"] = message if message is not None else ("Operation successful." if success else "An error occurred.")
-#         response_data["data"] = data
-
-#     # ----------------------------------------------------------------------------------
-#     # CHANGE THIS LINE: Pass headers to the Response constructor
-#     # ----------------------------------------------------------------------------------
-#     return Response(response_data, status=status_code, headers=headers)
-
-
 def generate_otp():
     return str(random.randint(1000, 9999))
 
@@ -190,6 +132,7 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token)
     }
 
+#MARK: Custom Exception Handler
 def custom_exception_handler(exc, context):
     # Call REST framework's default exception handler first,
     # to get the standard error response.

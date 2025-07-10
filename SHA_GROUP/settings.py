@@ -30,7 +30,7 @@ ALLOWED_HOSTS = ['*']
 
 
 # Application definition
-
+#MARK: APPS
 INSTALLED_APPS = [
     'jazzmin',
     'django.contrib.admin',
@@ -85,6 +85,7 @@ WSGI_APPLICATION = 'SHA_GROUP.wsgi.application'
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+#MARK: DB
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -152,7 +153,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Configure Django to use your custom User model
 AUTH_USER_MODEL = 'sha.User' # Ensure this is 'sha.User'
 
-# JWT settings
+#MARK: JWT settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -168,8 +169,7 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=30),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
-
-
+#MARK: DASHBOARD
 JAZZMIN_SETTINGS = {
     "site_title": "SHA Admin",
     "site_header": "SHA Admin",

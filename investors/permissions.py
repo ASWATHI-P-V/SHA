@@ -1,7 +1,7 @@
 # permissions.py
 
 from rest_framework import permissions
-
+#MARK: isadmin or readonly
 class IsAdminUser(permissions.BasePermission):
     """
     Custom permission to only allow administrators to access.
@@ -14,6 +14,7 @@ class IsAdminUser(permissions.BasePermission):
         # Admins have full object access
         return request.user and request.user.is_staff
 
+#MARK: isOwnerOrAdmin
 class IsOwnerOrAdmin(permissions.BasePermission):
     """
     Custom permission to only allow owners of an object to edit/delete it,

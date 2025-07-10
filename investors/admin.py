@@ -33,6 +33,7 @@ class InterestRateSettingAdmin(admin.ModelAdmin):
 class InvestorAdmin(admin.ModelAdmin):
     list_display = (
         'id','user_display_name', 'user_mobile_number', 'selected_service_group', # NEW: Display selected group
+        'number_of_shares',
         'invested_amount', 'profit', 'total_portfolio_value', 'investment_period',
         'interest_rate_applied', 'final_return_amount',
         'investment_start_date', 'investment_end_date', 'is_investment_active'
@@ -52,23 +53,45 @@ class InvestorAdmin(admin.ModelAdmin):
         (_('Investor Link'), {
             'fields': ('user',)
         }),
-        (_('Investment Details'), {
+        (_('Investment Input Details'), { # Renamed for clarity
             'fields': (
-                'selected_service_group', # NEW: Allow admin to select the service group
-                'invested_amount', 'tokens_generated', 'investment_period',
-                'interest_rate_applied', 'final_return_amount',
-                'profit', 'total_portfolio_value',
-                'investment_start_date', 'investment_end_date',
-                'is_investment_active'
+                'selected_service_group',
+                'number_of_shares',    # This is the field for admin input now
+                'investment_period',
+                'is_investment_active',
             ),
-            'description': _("Select the service group and enter investment details. Calculated values will appear upon saving.")
+            'description': _("Enter the user, service group, number of shares, investment period, and active status. Other values will be calculated automatically upon saving.")
+        }),
+        (_('Calculated & Auto-Generated Values'), { # New fieldset for calculated fields
+            'fields': (
+                'invested_amount',
+                'interest_rate_applied',
+                'final_return_amount',
+                'profit',
+                'total_portfolio_value',
+                'investment_start_date',
+                'investment_end_date',
+                'uuid',
+                'created_at',
+                'updated_at',
+            ),
+            'classes': ('collapse',), # Makes this section collapsible in the admin
         }),
     )
 
     readonly_fields = (
-        'tokens_generated', 'final_return_amount', 'interest_rate_applied',
-        'profit', 'total_portfolio_value',
-        'investment_end_date', 'uuid', 'created_at', 'updated_at'
+        # Mark all calculated and auto-generated fields as read-only
+        'invested_amount',
+        'interest_rate_applied',
+        'final_return_amount',
+        'profit',
+        'total_portfolio_value',
+        'investment_start_date',
+        'investment_end_date',
+        'uuid',
+        'created_at',
+        'updated_at'
+        
     )
 
     def user_display_name(self, obj):

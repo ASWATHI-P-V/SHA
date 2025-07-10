@@ -9,7 +9,7 @@ from django.db.models import JSONField # Import JSONField for MySQL compatibilit
 TIMEZONE_CHOICES = [(tz, tz) for tz in pytz.common_timezones]
 
 
-
+#MARK: UserProfileSettings Model
 class UserProfileSettings(models.Model):
     """
     Stores settings related to user profile editing.
@@ -40,7 +40,7 @@ class UserProfileSettings(models.Model):
                 self.pk = existing_settings.pk
         super().save(*args, **kwargs)
 
-
+#MARK: Custom User Model and Manager
 class UserManager(BaseUserManager):
     """
     Custom user manager where 'mobile_number' is the USERNAME_FIELD.
@@ -73,7 +73,7 @@ class UserManager(BaseUserManager):
         # Call create_user with mobile_number as the primary argument
         return self.create_user(mobile_number, name, password, **extra_fields)
 
-
+#MARK: Custom User Model
 class User(AbstractBaseUser, PermissionsMixin):
     # 'mobile_number' is now the unique identifier for login.
     mobile_number = models.CharField(

@@ -11,7 +11,7 @@ router.register(r'interest-rates', InterestRateSettingViewSet)
 urlpatterns = [
     # API endpoints for investor-related data (handled by router)
     path('api/', include(router.urls)),
+    
 ]
 
 # TODO: want a sertializers
-# MARK: seri

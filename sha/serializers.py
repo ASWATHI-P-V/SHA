@@ -22,7 +22,7 @@ def validate_file_extension(value, allowed_extensions):
         raise serializers.ValidationError(f"Unsupported file extension. Allowed are: {', '.join(allowed_extensions)}")
     return value
 
-
+#MARK: User Serializer
 class UserSerializer(serializers.ModelSerializer):
     """
     Basic serializer for User model. 'mobile_number' is the unique identifier.
@@ -31,7 +31,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'name', 'mobile_number', 'email', 'is_active', 'is_staff']
         read_only_fields = ['id', 'is_active', 'is_staff', 'mobile_number'] # mobile_number is read-only here for basic display/return
-
+#MARK: OTP Serializers
 class SendOTPRequestSerializer(serializers.Serializer):
     """
     Serializerr for the 'send OTP' request.
@@ -75,7 +75,7 @@ class SendOTPRequestSerializer(serializers.Serializer):
 
         return attrs
 
-
+# MARK: Verify OTP Request Serializer
 class VerifyOTPRequestSerializer(serializers.Serializer):
     """
     Serializer for the 'verify OTP' request.
@@ -119,7 +119,7 @@ class VerifyOTPRequestSerializer(serializers.Serializer):
 
         return attrs
 
-
+#MARK: User Profile Serializer
 class UserProfileSerializer(serializers.ModelSerializer):
     """
     Serializer for creating (via POST) and updating (via PUT/PATCH) user profiles.
