@@ -167,13 +167,13 @@ class UserProfileView(APIView):
                 message = "User profile updated successfully." if not pk else f"User profile for {user_instance.username} updated by admin."
                 return api_response(True, message, data=serializer.data, status_code=status.HTTP_200_OK)
             except DjangoValidationError as e:
-                return api_response(False, f"Model validation error during update: {e.message}", data=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+                return api_response(False, f" {e.message}", data=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
-                return api_response(False, f"An unexpected error occurred during profile update: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return api_response(False, f" {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             first_error_key = next(iter(serializer.errors))
             first_error_message = serializer.errors[first_error_key][0]
-            return api_response(False, f"Validation failed for {first_error_key}: {first_error_message}", data=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+            return api_response(False, f" {first_error_key}: {first_error_message}", data=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk=None, *args, **kwargs):
         user_instance = self.get_object(request, pk)

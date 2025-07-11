@@ -9,7 +9,8 @@ User = get_user_model()
 class InvestmentServiceGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvestmentServiceGroup
-        fields = '__all__'
+        # fields = '__all__'
+        fields = ['id', 'name', 'share_value', 'description', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ('created_at', 'updated_at')
 #MARK: Interest Rate Setting Serializer
 class InterestRateSettingSerializer(serializers.ModelSerializer):
@@ -62,7 +63,10 @@ class InvestorSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id','uuid', 'invested_amount', 'interest_rate_applied',
             'final_return_amount', 'profit', 'total_portfolio_value',
-            'investment_end_date', 'created_at', 'updated_at',
+            'investment_start_date', # <--- ADD THIS if system-managed
+            'investment_end_date',
+            'is_investment_active',  # <--- ADD THIS if system-managed
+            'created_at', 'updated_at',
             'selected_service_group_details'
         ]
         # NEW: Add validators for unique_together here for better API error messages

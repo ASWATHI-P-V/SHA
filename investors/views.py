@@ -55,10 +55,6 @@ class InvestmentServiceGroupViewSet(viewsets.ModelViewSet):
             status_code=status.HTTP_200_OK
         )
 
-   
-    
-
-
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -69,7 +65,7 @@ class InvestmentServiceGroupViewSet(viewsets.ModelViewSet):
         return api_response(
             True,
             "Investment Service Group created successfully.",
-            data={"id": serializer.data.get('id'), "name": serializer.data.get('name')}, 
+            data=serializer.data,
             status_code=status.HTTP_201_CREATED,
             headers=headers
         )
@@ -83,7 +79,7 @@ class InvestmentServiceGroupViewSet(viewsets.ModelViewSet):
         return api_response(
             True,
             "Investment Service Group updated successfully.",
-            data={"id": serializer.data.get('id'), "name": serializer.data.get('name')},
+            data=serializer.data,
             status_code=status.HTTP_200_OK
         )
 
@@ -138,10 +134,6 @@ class InterestRateSettingViewSet(viewsets.ModelViewSet):
             status_code=status.HTTP_200_OK
         )
 
-    
-    
-
-
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -174,7 +166,7 @@ class InterestRateSettingViewSet(viewsets.ModelViewSet):
         return api_response(
             True,
             "Interest Rate Setting updated successfully.",
-            data={"id": serializer.data.get('id'), "period_in_years": serializer.data.get('period_in_years'), "interest_percentage": serializer.data.get('interest_percentage'), "service_group": serializer.data.get('service_group'), "rate": serializer.data.get('rate')},
+            data=serializer.data,
             status_code=status.HTTP_200_OK
         )
 
@@ -255,18 +247,6 @@ class InvestorViewSet(viewsets.ModelViewSet):
                     data=None,
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
-            # except DRFValidationError as e:
-            #     # Extract the first error message from the serializer errors
-            #     # This makes the 'message' field in the response more specific
-            #     first_error_key = next(iter(e.detail)) # Get the first field with an error
-            #     first_error_message = e.detail[first_error_key][0] # Get the first error message for that field
-
-            #     return api_response(
-            #         False,
-            #         f"{first_error_key}: {first_error_message}", # Specific message
-            #         data=e.detail, # Keep the full error details in 'data'
-            #         status_code=status.HTTP_400_BAD_REQUEST
-            #     )
             except Exception as e:
                 return api_response(
                     False,
